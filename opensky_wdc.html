@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>OpenSky WDC</title>
+    <script src="https://connectors.tableau.com/libs/tableauwdc-2.3.0.js"></script>
+    <script>
+      (function() {
+        const myConnector = tableau.makeConnector();
+
+        myConnector.getSchema = function(schemaCallback) {
+          const cols = [
+            { id: "icao24", dataType: tableau.dataTypeEnum.string },
+            { id: "callsign", dataType: tableau.dataTypeEnum.string },
+            { id: "origin_country", dataType: tableau.dataTypeEnum.string },
+            { id: "longitude", dataType: tableau.dataTypeEnum.float },
+            { id: "latitude", dataType: tableau.dataTypeEnum.float },
+            { id: "baro_altitude", dataType: tableau.dataTypeEnum.float },
+            { id: "velocity", dataType: tableau.dataTypeEnum.float },
+            { id: "heading", dataType: tableau.dataTypeEnum.float },
+            { id: "time_position", dataType: tableau.dataTypeEnum.int },
+            { id: "last_contact", dataType: tableau.dataTypeEnum.int }
+          ];
+
+          const tableSchema = {
+            id: "openskyLive",
+            alias: "OpenSky Real-Time Flights",
+            columns: cols
+          };
+
+          schemaCallback([tableSchema]);
+        };
+
+        myConnector.getData = function(table, doneCallback) {
+          const url = "https://opensky-network.org/api/states/all";
+
+          fetch(url)
+            .then(resp => resp.json())
+            .then(data => {
+              const rows = [];
+              if (data.states) {
+                data.states.forEach(s => {
+                  rows.push({
+                    icao24: s[0],
+                    callsign: s[1],
+                    origin_country: s[2],
+                    longitude: s[5],
+                    latitude: s[6],
+                    baro_altitude: s[7],
+                    velocity: s[9],
+                    heading: s[10],
+                    time_position: s[3],
+                    last_contact: s[4]
+                  });
+                });
+              }
+
+              table.appendRows(rows);
+              doneCallback();
+            })
+            .catch(err => {
+              console.error("Error fetching OpenSky:", err);
+              doneCallback();
+            });
+        };
+
+        tableau.registerConnector(myConnector);
+
+        document.getElementById("submitButton").addEventListener("click", () => {
+          tableau.connectionName = "OpenSky Real-Time Flight Data";
+          tableau.submit();
+        });
+      })();
+    </script>
+  </head>
+  <body>
+    <h2>OpenSky Web Data Connector</h2>
+    <p>Click below to load live flight data into Tableau.</p>
+    <button id="submitButton">Get Data</button>
+  </body>
+</html>
